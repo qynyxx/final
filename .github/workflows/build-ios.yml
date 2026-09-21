@@ -33,3 +33,9 @@ jobs:
           pod install
           cd ..
           flutter build ios --release --no-codesign
+
+      - name: Upload iOS Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-release-app
+          path: build/ios/iphoneos/Runner.app
