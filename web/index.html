@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base href="/">
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" id="description" content="Running Reminder App">
+  <title>flutter_application_1</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="google-signin-client_id" content="816126487267-bll9o778vbn0tn9qmlsomhqt7me61na4.apps.googleusercontent.com">
+</head>
+<body>
+  <script src="flutter.js" defer></script>
+  <script>
+    window.addEventListener('load', function(ev) {
+      _flutter.loader.loadEntrypoint({
+        serviceWorker: {
+          serviceWorkerVersion: null,
+        },
+        onEntrypointLoaded: function(engineInitializer) {
+          engineInitializer.initializeEngine().then(function(appRunner) {
+            appRunner.runApp();
+          });
+        }
+      });
+    });
+  </script>
+</body>
+</html>
