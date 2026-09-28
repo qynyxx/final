@@ -10,10 +10,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  cupertino_icons: ^1.0.8
-  device_preview: ^1.2.0
-  shared_preferences: ^2.5.5
-  google_sign_in: ^7.2.0
+  shared_preferences: ^2.5.5  # atau versi yang Anda gunakan
+  crypto: ^3.0.3             # <-- Pastikan ini ada!
+  http: ^1.2.0
 
 dev_dependencies:
   flutter_test:

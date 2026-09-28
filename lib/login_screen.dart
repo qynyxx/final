@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -10,11 +11,13 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
+// PERHATIKAN BAGIAN INI: Wajib ada <LoginScreen> di belakang kata State
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscureText = true;
-  bool _isRegisterMode = false; // Flag untuk berpindah antara mode Login & Register
+  bool _isRegisterMode = false;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -23,7 +26,6 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  // --- MENGELOLA REGISTER ---
   Future<void> _handleRegister() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
@@ -33,18 +35,40 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('saved_email', email);
-    await prefs.setString('saved_password', password);
+    setState(() => _isLoading = true);
 
-    _showSnackBar('Pendaftaran berhasil! Silakan login.');
-    setState(() {
-      _isRegisterMode = false; // Kembali ke tampilan login
-      _passwordController.clear();
-    });
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // Cek apakah email sudah terdaftar
+      final savedEmail = prefs.getString('local_email');
+
+      if (savedEmail != null && savedEmail == email) {
+        _showSnackBar('Email sudah terdaftar');
+        return;
+      }
+
+      // Simpan akun secara lokal
+      await prefs.setString('local_email', email);
+      await prefs.setString('local_password', password);
+
+      if (!mounted) return;
+
+      _showSnackBar('Pendaftaran berhasil! Silakan login.');
+
+      setState(() {
+        _isRegisterMode = false;
+        _passwordController.clear();
+      });
+    } catch (e) {
+      _showSnackBar('Gagal menyimpan akun: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
-  // --- MENGELOLA LOGIN ---
   Future<void> _handleLogin() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
@@ -54,27 +78,42 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    final prefs = await SharedPreferences.getInstance();
-    final savedEmail = prefs.getString('saved_email');
-    final savedPassword = prefs.getString('saved_password');
+    setState(() => _isLoading = true);
 
-    // Cek apakah data pendaftaran ada
-    if (savedEmail == null || savedPassword == null) {
-      _showSnackBar('Akun belum terdaftar. Silakan register terlebih dahulu.');
-      return;
-    }
+    try {
+      final prefs = await SharedPreferences.getInstance();
 
-    // Cocokkan data input dengan data tersimpan
-    if (email == savedEmail && password == savedPassword) {
-      await prefs.setBool('is_logged_in', true);
-      widget.onLoginSuccess();
-    } else {
-      _showSnackBar('Email atau Password salah!');
+      // Ambil data akun yang tersimpan
+      final savedEmail = prefs.getString('local_email');
+      final savedPassword = prefs.getString('local_password');
+
+      // Cek email dan password
+      if (savedEmail == email && savedPassword == password) {
+        // Simpan status login
+        // DIKOREKSI: menggunakan key yang sama dengan main.dart
+        await prefs.setBool('is_logged_in', true);
+
+        if (!mounted) return;
+
+        _showSnackBar('Login berhasil!');
+
+        // Memanggil callback sukses login
+        widget.onLoginSuccess();
+      } else {
+        _showSnackBar('Email atau Password salah!');
+      }
+    } catch (e) {
+      _showSnackBar('Gagal melakukan login: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
   void _showSnackBar(String message) {
     if (!mounted) return;
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
     );
@@ -122,8 +161,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 6),
                     Text(
                       _isRegisterMode
-                          ? 'Buat akun baru untuk mulai menyimpan jadwal'
-                          : 'Masuk untuk melihat jadwal lari kamu',
+                          ? 'Buat akun baru ke penyimpanan lokal'
+                          : 'Masuk dengan akun lokal kamu',
                       style: TextStyle(
                         color: Colors.grey[600],
                         fontSize: 13,
@@ -170,7 +209,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       width: double.infinity,
                       height: 48,
                       child: ElevatedButton(
-                        onPressed: _isRegisterMode ? _handleRegister : _handleLogin,
+                        onPressed: _isLoading
+                            ? null
+                            : (_isRegisterMode
+                                ? _handleRegister
+                                : _handleLogin),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF3B82F6),
                           shape: RoundedRectangleBorder(
@@ -178,14 +221,18 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           elevation: 0,
                         ),
-                        child: Text(
-                          _isRegisterMode ? 'Daftar' : 'Masuk',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        child: _isLoading
+                            ? const CircularProgressIndicator(
+                                color: Colors.white,
+                              )
+                            : Text(
+                                _isRegisterMode ? 'Daftar' : 'Masuk',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -196,7 +243,10 @@ class _LoginScreenState extends State<LoginScreen> {
                           _isRegisterMode
                               ? 'Sudah punya akun? '
                               : 'Belum punya akun? ',
-                          style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 13,
+                          ),
                         ),
                         GestureDetector(
                           onTap: () {
